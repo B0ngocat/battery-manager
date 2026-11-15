@@ -215,6 +215,25 @@
         border: 1px solid var(--line); border-radius: 6px;
         image-rendering: pixelated; background: #fff;
       }
+      .live-badge {
+        position: absolute; left: 10px; bottom: 10px;
+        background: rgba(0,0,0,.72); color: #fff;
+        border-radius: 6px; padding: 7px 10px;
+        font-size: .85rem; font-weight: 600;
+        display: flex; align-items: center; gap: 8px;
+        pointer-events: none; max-width: calc(100% - 20px);
+      }
+      .live-badge .dot {
+        width: 9px; height: 9px; border-radius: 50%;
+        background: #f87171; flex: none;
+        animation: pulse 1.2s ease-in-out infinite;
+      }
+      .live-badge .live-v {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 1.05rem; font-weight: 700; color: #fde68a;
+      }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+      @media (prefers-reduced-motion: reduce) { .live-badge .dot { animation: none; } }
 
       @media (max-width: 560px) {
         .slot { min-height: 104px; padding: 7px 7px; }
@@ -256,19 +275,20 @@
         </div>
         <div id="camPanel" class="hidden">
           <div class="cam-wrap" id="camWrap">
-            <video id="camVideo" playsinline muted></video>
+            <video id="camVideo" playsinline muted autoplay></video>
             <img id="camFrozen" class="hidden" alt="Captured photo of the meter display" />
             <div class="guide" id="camGuide"><span>Line the meter numbers up inside this box</span></div>
+            <div class="live-badge hidden" id="liveBadge"><span class="dot" aria-hidden="true"></span><span id="liveText">Live — scanning…</span><span class="live-v" id="liveVolts"></span></div>
           </div>
           <div class="actions">
-            <button class="act primary" id="captureBtn" type="button">Read voltage</button>
+            <button class="act primary hidden" id="captureBtn" type="button">Read voltage</button>
             <button class="act hidden" id="retakeBtn" type="button">Retake</button>
             <button class="act" id="camCloseBtn" type="button">Close camera</button>
           </div>
           <p class="msg" id="camMsg" role="status"></p>
           <canvas id="procCanvas" class="hidden"></canvas>
         </div>
-        <p class="hint" id="assignHint">Type the voltage, scan the meter with the camera, or upload a photo — then tap an empty slot to put that battery there.</p>
+        <p class="hint" id="assignHint">Type the voltage, scan the meter with the camera, or upload a photo — then tap an empty slot to put that battery there. The camera stays live and keeps reading while it's open.</p>
         <p class="msg" id="msg" role="status"></p>
       </section>
 
@@ -443,7 +463,7 @@
           hint.textContent = "Reading ready — tap an empty slot to assign this battery.";
           hint.classList.add("ready");
         } else {
-          hint.textContent = "Type the voltage, scan the meter with the camera, or upload a photo — then tap an empty slot to put that battery there.";
+          hint.textContent = "Type the voltage, scan the meter with the camera, or upload a photo — then tap an empty slot to put that battery there. The camera stays live and keeps reading while it's open.";
           hint.classList.remove("ready");
         }
 
@@ -582,12 +602,71 @@
       var camStream = null;
       var camMode = null; // "live" | "photo"
       var photoCanvas = null;
+      var liveBadge = document.getElementById("liveBadge");
+      var liveText = document.getElementById("liveText");
+      var liveVolts = document.getElementById("liveVolts");
+      var liveTimer = null;
+      var liveBusy = false;
+      var liveLastValue = null;
+      var ocrSuppressPreview = false;
 
       function camSay(text, cls) {
         camMsg.textContent = text;
         camMsg.className = "msg" + (cls ? " " + cls : "");
       }
+      function stopLiveScan() {
+        if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+        liveBusy = false;
+      }
+      function startLiveScan() {
+        stopLiveScan();
+        liveBadge.classList.remove("hidden");
+        liveText.textContent = "Live — scanning…";
+        liveVolts.textContent = "";
+        liveTimer = setInterval(liveScanTick, 700);
+        // First attempt almost immediately, once the stream has frames.
+        setTimeout(liveScanTick, 350);
+      }
+      function liveScanTick() {
+        if (camMode !== "live" || liveBusy || document.hidden) return;
+        if (!camVideo.videoWidth || camVideo.readyState < 2) return;
+        var src = grabGuideCrop(false);
+        if (!src) return;
+        liveBusy = true;
+        // Let the browser paint / breathe between OCR passes.
+        setTimeout(function () {
+          try {
+            ocrSuppressPreview = true;
+            var result = ocrReadVoltage(src);
+            ocrSuppressPreview = false;
+            if (camMode !== "live") return;
+            if (result !== null) {
+              liveLastValue = result;
+              liveText.textContent = "Live — reading the meter";
+              liveVolts.textContent = fmtV(result) + " V";
+              // Keep the reading box continuously in sync with the meter,
+              // without stealing focus while the user is typing in it.
+              if (document.activeElement !== voltageInput) {
+                var next = result.toFixed(2);
+                if (voltageInput.value !== next) {
+                  voltageInput.value = next;
+                  render();
+                }
+              }
+              camSay("Camera is live and reading " + fmtV(result) + " V. Check the number, then tap an empty slot — the camera keeps watching while you do.", "ok");
+            } else {
+              liveText.textContent = "Live — scanning…";
+              liveVolts.textContent = liveLastValue !== null ? fmtV(liveLastValue) + " V" : "";
+              camSay("Camera is live — line the meter numbers up inside the gold box and hold it steady. It keeps trying on its own, no need to tap anything.");
+            }
+          } finally {
+            ocrSuppressPreview = false;
+            liveBusy = false;
+          }
+        }, 0);
+      }
       function stopCamera() {
+        stopLiveScan();
         if (camStream) {
           camStream.getTracks().forEach(function (t) { t.stop(); });
           camStream = null;
@@ -596,6 +675,7 @@
       }
       function closeCamera() {
         stopCamera();
+        liveBadge.classList.add("hidden");
         camPanel.classList.add("hidden");
         camMode = null;
       }
@@ -603,29 +683,35 @@
         camPanel.classList.remove("hidden");
         procCanvas.classList.add("hidden");
         retakeBtn.classList.add("hidden");
-        captureBtn.classList.remove("hidden");
+        captureBtn.classList.add("hidden");
         camSay("");
       }
 
       document.getElementById("scanBtn").addEventListener("click", function () {
         openCameraPanel();
         camMode = "live";
+        liveLastValue = null;
         camFrozen.classList.add("hidden");
         camVideo.classList.remove("hidden");
         camGuide.classList.remove("hidden");
+        captureBtn.classList.add("hidden");
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          liveBadge.classList.add("hidden");
           camSay("This browser can't open the camera here. Upload a photo of the meter instead, or type the voltage.", "err");
           return;
         }
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
           .then(function (stream) {
+            if (camMode !== "live") { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
             camStream = stream;
             camVideo.srcObject = stream;
             var p = camVideo.play();
             if (p && p.catch) p.catch(function () {});
-            camSay("Point the camera at the meter, line the numbers up inside the gold box, then tap Read voltage.");
+            camSay("Camera is live and stays on the meter — line the numbers up inside the gold box. It reads continuously and fills the voltage in as soon as it can see the digits.");
+            startLiveScan();
           })
           .catch(function () {
+            liveBadge.classList.add("hidden");
             camSay("The camera didn't open — permission denied or no camera on this device. Upload a photo of the meter instead, or type the voltage.", "err");
           });
       });
@@ -645,6 +731,8 @@
           openCameraPanel();
           camMode = "photo";
           stopCamera();
+          liveBadge.classList.add("hidden");
+          captureBtn.classList.remove("hidden");
           camVideo.classList.add("hidden");
           camGuide.classList.add("hidden");
           camFrozen.src = url;
@@ -660,8 +748,9 @@
 
       // Crop the guide-box region out of the live frame (the video is shown
       // with object-fit: cover, so map container fractions back to source
-      // pixels), and freeze the full frame for review.
-      function grabGuideCrop() {
+      // pixels). The live path never freezes the frame — the video keeps
+      // playing underneath the whole time.
+      function grabGuideCrop(freeze) {
         var rect = camWrap.getBoundingClientRect();
         var vw = camVideo.videoWidth, vh = camVideo.videoHeight;
         if (!vw || !vh || !rect.width) return null;
@@ -675,34 +764,27 @@
         var c = document.createElement("canvas");
         c.width = Math.round(sw); c.height = Math.round(sh);
         c.getContext("2d").drawImage(camVideo, sx, sy, sw, sh, 0, 0, c.width, c.height);
-        var full = document.createElement("canvas");
-        full.width = vw; full.height = vh;
-        full.getContext("2d").drawImage(camVideo, 0, 0);
-        camFrozen.src = full.toDataURL("image/jpeg", 0.85);
+        if (freeze) {
+          var full = document.createElement("canvas");
+          full.width = vw; full.height = vh;
+          full.getContext("2d").drawImage(camVideo, 0, 0);
+          camFrozen.src = full.toDataURL("image/jpeg", 0.85);
+        }
         return c;
       }
 
+      // Photo mode only: the live camera reads on its own and never uses
+      // this button, never freezes, and never closes itself after a read.
       captureBtn.addEventListener("click", function () {
-        var src = null;
-        if (camMode === "live") {
-          src = grabGuideCrop();
-          if (!src) { camSay("Camera isn't ready yet — give it a second and try again.", "err"); return; }
-          camVideo.classList.add("hidden");
-          camGuide.classList.add("hidden");
-          camFrozen.classList.remove("hidden");
-          retakeBtn.classList.remove("hidden");
-        } else if (camMode === "photo") {
-          src = photoCanvas;
-        }
-        if (!src) return;
-        var result = ocrReadVoltage(src);
+        if (camMode !== "photo" || !photoCanvas) return;
+        var result = ocrReadVoltage(photoCanvas);
         if (result !== null) {
           voltageInput.value = result.toFixed(2);
-          say("Camera read " + fmtV(result) + " V — it's in the reading box. Check it, then tap an empty slot to assign this battery.", "ok");
+          say("Photo read " + fmtV(result) + " V — it's in the reading box. Check it, then tap an empty slot to assign this battery.", "ok");
           closeCamera();
           render();
         } else {
-          camSay("Couldn't read the digits from that shot — the black-and-white preview below is what the reader saw. Retake it closer, straighter, and with less glare, or close the camera and type the voltage.", "err");
+          camSay("Couldn't read the digits from that photo — the black-and-white preview below is what the reader saw. Try a closer, straighter photo with less glare, use the live camera instead, or type the voltage.", "err");
         }
       });
       retakeBtn.addEventListener("click", function () {
@@ -711,7 +793,8 @@
         camGuide.classList.remove("hidden");
         retakeBtn.classList.add("hidden");
         procCanvas.classList.add("hidden");
-        camSay("Line the numbers up inside the gold box, then tap Read voltage.");
+        camSay("Camera is live — line the numbers up inside the gold box. It reads continuously on its own.");
+        if (camMode === "live" && camStream) startLiveScan();
       });
 
       /* ----- 7-segment OCR: threshold, find digit blobs, test segments ----- */
@@ -731,7 +814,7 @@
           out.data[i * 4] = v; out.data[i * 4 + 1] = v; out.data[i * 4 + 2] = v; out.data[i * 4 + 3] = 255;
         }
         ctx.putImageData(out, 0, 0);
-        procCanvas.classList.remove("hidden");
+        if (!ocrSuppressPreview) procCanvas.classList.remove("hidden");
       }
 
       function ocrReadVoltage(srcCanvas) {
