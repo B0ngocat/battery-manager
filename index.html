@@ -3,48 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="dark" />
     <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap" rel="stylesheet" />
     <title>Battery Manager</title>
     <style>
+      /* Ninjeneers colors: black like the team shirts and banners,
+         gold like the ninja mask. Same palette day or night. */
       :root {
-        --bg: #f4f4f6;
-        --panel: #ffffff;
-        --panel-2: #ececf1;
-        --line: #d6d6e0;
-        --text: #17171f;
-        --muted: #5d5d6e;
-        --purple: #5b21b6;
-        --purple-soft: #ede9fe;
-        --gold: #b45309;
-        --gold-bg: #fef3c7;
-        --green: #047857;
-        --green-bg: #d1fae5;
-        --red: #b91c1c;
-        --slot-empty: #fafafa;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #0e0e13;
-          --panel: #17171f;
-          --panel-2: #1f1f2a;
-          --line: #2c2c3a;
-          --text: #f2f2f6;
-          --muted: #9d9dab;
-          --purple: #a78bfa;
-          --purple-soft: #2a2145;
-          --gold: #fbbf24;
-          --gold-bg: #3a2c07;
-          --green: #34d399;
-          --green-bg: #0b3527;
-          --red: #f87171;
-          --slot-empty: #12121a;
-        }
+        --bg: #0a0a0b;
+        --panel: #16161a;
+        --panel-2: #232329;
+        --line: #3d3d47;
+        --text: #f5f1e3;
+        --muted: #aaa393;
+        --purple: #f5b921;
+        --purple-soft: #2e2507;
+        --gold: #f5b921;
+        --gold-bg: #33270a;
+        --green: #ffd94d;
+        --green-bg: #2e2507;
+        --red: #ff7a6b;
+        --slot-empty: #101013;
+        --ink: #131313;
+        --display: "Black Ops One", "Arial Black", system-ui, sans-serif;
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: var(--bg);
+        background:
+          repeating-linear-gradient(-45deg, rgba(245, 185, 33, .025) 0 14px, transparent 14px 28px),
+          var(--bg);
         color: var(--text);
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         line-height: 1.4;
@@ -52,19 +43,34 @@
       main {
         max-width: 880px;
         margin: 0 auto;
-        padding: 16px 14px 40px;
+        padding: 18px 14px 40px;
       }
-      h1 { font-size: 1.5rem; margin: 0; letter-spacing: .01em; }
-      .teams { color: var(--muted); font-size: .9rem; margin: 2px 0 0; }
-      .teams b { color: var(--purple); font-weight: 700; }
+      h1 {
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 1.7rem;
+        margin: 0;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+        background: var(--gold);
+        color: var(--ink);
+        display: inline-block;
+        padding: 7px 16px 5px;
+        border-radius: 3px;
+        transform: rotate(-1.3deg);
+        box-shadow: 5px 5px 0 rgba(0, 0, 0, .65);
+      }
+      .teams { color: var(--muted); font-size: .92rem; margin: 12px 0 0 2px; }
+      .teams b { color: var(--gold); font-weight: 700; }
 
       /* ---------- best battery banner ---------- */
       .best {
-        margin-top: 14px;
-        border: 1px solid var(--line);
-        border-left: 5px solid var(--gold);
+        margin-top: 16px;
+        border: 2px solid var(--gold);
         background: var(--panel);
-        border-radius: 8px;
+        border-radius: 4px;
+        box-shadow: 5px 5px 0 rgba(0, 0, 0, .5);
+        transform: rotate(.3deg);
         padding: 10px 14px;
         display: flex;
         flex-wrap: wrap;
@@ -75,19 +81,28 @@
         font-size: .72rem; font-weight: 700; letter-spacing: .08em;
         text-transform: uppercase; color: var(--gold);
       }
-      .best .who { font-size: 1.15rem; font-weight: 700; }
+      .best .who { font-family: var(--display); font-size: 1.1rem; font-weight: 400; letter-spacing: .03em; }
       .best .volts { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 700; }
       .best .stats { margin-left: auto; color: var(--muted); font-size: .85rem; }
 
       /* ---------- reading panel ---------- */
       .panel {
-        margin-top: 14px;
+        margin-top: 16px;
         background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
+        border: 2px solid var(--line);
+        border-radius: 4px;
+        box-shadow: 5px 5px 0 rgba(0, 0, 0, .45);
         padding: 12px 14px;
       }
-      .panel h2 { font-size: .95rem; margin: 0 0 8px; }
+      .panel h2 {
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 1rem;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin: 0 0 10px;
+      }
       .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
       label.field { display: block; font-size: .8rem; color: var(--muted); font-weight: 600; }
       label.field input { margin-top: 4px; display: block; }
@@ -95,11 +110,12 @@
         font: inherit;
         color: var(--text);
         background: var(--panel-2);
-        border: 1px solid var(--line);
-        border-radius: 6px;
+        border: 2px solid var(--line);
+        border-radius: 4px;
         padding: 8px 10px;
         min-height: 40px;
       }
+      input[type="number"]:focus, input[type="text"]:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
       #voltageInput { width: 130px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 1.1rem; }
       #labelInput { width: 150px; }
       .hint { font-size: .85rem; color: var(--muted); margin: 8px 0 0; }
@@ -121,8 +137,9 @@
         font: inherit;
         color: var(--text);
         background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
+        border: 2px solid var(--line);
+        border-radius: 5px;
+        box-shadow: 3px 3px 0 rgba(0, 0, 0, .45);
         padding: 9px 10px;
         min-height: 118px;
         cursor: pointer;
@@ -131,7 +148,10 @@
         gap: 3px;
         width: 100%;
       }
-      .slot:hover { border-color: var(--purple); }
+      .grid .slot:nth-child(odd) { transform: rotate(-.55deg); }
+      .grid .slot:nth-child(even) { transform: rotate(.45deg); }
+      .grid .slot:nth-child(3n) { transform: rotate(-.2deg); }
+      .slot:hover { border-color: var(--gold); transform: rotate(0); }
       .slot.selected { outline: 2px solid var(--purple); outline-offset: 1px; }
       .slot.empty {
         background: var(--slot-empty);
@@ -152,7 +172,7 @@
       .bar { height: 7px; border-radius: 4px; background: var(--panel-2); overflow: hidden; margin-top: 3px; }
       .bar i { display: block; height: 100%; background: var(--purple); border-radius: 4px; }
       .slot.is-full .bar i { background: var(--green); }
-      .slot.is-best { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+      .slot.is-best { border-color: var(--gold); background: var(--gold-bg); box-shadow: 3px 3px 0 rgba(0, 0, 0, .45), inset 0 0 0 1px var(--gold); }
 
       /* ---------- detail panel ---------- */
       .detail .big-v { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 2rem; font-weight: 700; }
@@ -160,14 +180,16 @@
       .detail .bar { height: 10px; margin: 10px 0 4px; }
       .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
       button.act {
-        font: inherit; font-weight: 600;
-        border-radius: 6px; border: 1px solid var(--line);
+        font: inherit; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .04em; font-size: .88rem;
+        border-radius: 4px; border: 2px solid var(--line);
+        box-shadow: 3px 3px 0 rgba(0, 0, 0, .45);
         background: var(--panel-2); color: var(--text);
         padding: 9px 14px; min-height: 40px; cursor: pointer;
       }
-      button.act:hover { border-color: var(--purple); }
-      button.act.primary { background: var(--purple); border-color: var(--purple); color: #fff; }
-      @media (prefers-color-scheme: dark) { button.act.primary { color: #17102e; } }
+      button.act:hover { border-color: var(--gold); }
+      button.act:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, .45); }
+      button.act.primary { background: var(--gold); border-color: var(--gold); color: var(--ink); }
       button.act.danger { color: var(--red); }
       .hidden { display: none; }
 
@@ -185,13 +207,15 @@
       /* ---------- camera reading ---------- */
       .scanrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
       label.act {
-        font: inherit; font-weight: 600;
-        border-radius: 6px; border: 1px solid var(--line);
+        font: inherit; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .04em; font-size: .88rem;
+        border-radius: 4px; border: 2px solid var(--line);
+        box-shadow: 3px 3px 0 rgba(0, 0, 0, .45);
         background: var(--panel-2); color: var(--text);
         padding: 9px 14px; min-height: 40px; cursor: pointer;
         display: inline-flex; align-items: center;
       }
-      label.act:hover { border-color: var(--purple); }
+      label.act:hover { border-color: var(--gold); }
       .cam-wrap {
         position: relative; margin-top: 12px;
         border-radius: 8px; overflow: hidden;
@@ -248,18 +272,18 @@
   </head>
   <body>
     <main>
-      <h1>Battery Manager</h1>
-      <p class="teams"><b>Ninjeneers</b> FRC 2383 &nbsp;·&nbsp; <b>Rising Ninjas</b> FTC 16391 — goBILDA 12V NiMH packs</p>
+      <h1>★ Battery Manager</h1>
+      <p class="teams"><b>Ninjeneers</b> FRC 2383 &nbsp;·&nbsp; <b>Rising Ninjas</b> FTC 16391 — goBILDA 12V NiMH packs, pit charging rack</p>
 
       <section class="best" aria-live="polite">
-        <span class="tag">Highest battery</span>
+        <span class="tag">Top battery</span>
         <span class="who" id="bestWho">No batteries in slots yet</span>
         <span class="volts" id="bestVolts"></span>
         <span class="stats" id="bestStats"></span>
       </section>
 
       <section class="panel">
-        <h2>New reading</h2>
+        <h2>Fresh reading</h2>
         <div class="row">
           <label class="field">Measured voltage (V)
             <input id="voltageInput" type="number" inputmode="decimal" step="0.01" min="0" max="20" placeholder="13.42" />
@@ -309,7 +333,7 @@
 
       <div class="cols">
         <section class="panel">
-          <h2>Charger settings</h2>
+          <h2>Charger setup</h2>
           <div class="row">
             <label class="field">Charge rate (V / hour)
               <input id="rateInput" type="number" step="0.1" min="0" value="2.0" />
@@ -322,7 +346,7 @@
         </section>
 
         <section class="panel">
-          <h2>Taken out</h2>
+          <h2>Pulled out</h2>
           <ul class="log" id="log"><li class="none">Nothing taken out yet.</li></ul>
         </section>
       </div>
